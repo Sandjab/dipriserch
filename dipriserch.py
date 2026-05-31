@@ -95,3 +95,64 @@ def run_sweep(slug: str, run_dir: Path, queries: list[str] | None = None) -> Non
 
     print(f"[sweep] {len(results)} pages récupérées")
     out_path.write_text(json.dumps(results, ensure_ascii=False, indent=2))
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 : Extract
+# ---------------------------------------------------------------------------
+
+EXTRACT_PROMPT = """\
+Tu es un rédacteur technique expert. Analyse le contenu web ci-dessous et produis :
+1. Une liste de faits vérifiables extraits du contenu, chacun avec ses sources URL.
+2. Les sections d'un document pédagogique structuré sur le sujet.
+
+Sujet : {slug}
+
+Contenu web :
+{content}
+
+Réponds UNIQUEMENT avec un JSON valide de cette structure exacte :
+{{
+  "facts": [
+    {{"id": "fact_001", "fact": "...", "sources": ["url1", "url2"]}}
+  ],
+  "sections": [
+    {{"id": "section_<slug_snake_case>", "title": "...", "level": 1, "content": "..."}}
+  ]
+}}
+
+Règles :
+- IDs de section préfixés "section_" en snake_case (ex: "section_gradient_descent").
+- Chaque fait référence les URLs sources où il apparaît.
+- Le contenu des sections est en markdown.
+- level 1 = section principale, level 2 = sous-section.
+"""
+
+MAX_CONTENT_CHARS = 80_000
+
+
+def run_extract(slug: str, run_dir: Path, client: OpenAI, model: str) -> None:
+    if (run_dir / "knowledge.json").exists() and (run_dir / "sections_draft.json").exists():
+        print("[extract] Fichiers déjà présents, skip.")
+        return
+
+    sweep = json.loads((run_dir / "sweep_results.json").read_text())
+    content = "\n\n---\n\n".join(
+        f"Source: {r['url']}\n{r['markdown']}" for r in sweep
+    )[:MAX_CONTENT_CHARS]
+
+    print(f"[extract] Appel LLM ({len(content)} chars)...")
+    result = chat_structured(client, model,
+                             EXTRACT_PROMPT.format(slug=slug.replace("-", " "), content=content))
+
+    facts = result.get("facts", [])
+    for f in facts:
+        f.setdefault("confirmed", False)
+
+    sections = result.get("sections", [])
+    print(f"[extract] {len(facts)} faits, {len(sections)} sections")
+
+    (run_dir / "knowledge.json").write_text(
+        json.dumps(facts, ensure_ascii=False, indent=2))
+    (run_dir / "sections_draft.json").write_text(
+        json.dumps(sections, ensure_ascii=False, indent=2))
