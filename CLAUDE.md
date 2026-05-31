@@ -4,17 +4,21 @@ Pipeline hybride : LLM local/RunPod pour les phases coûteuses, Claude pour la s
 
 ## Concept central
 
-Même output que `scriptorium/triptych` (3 éditions HTML vérifiées), mais avec une économie de tokens
-radicale : Sweep + Extract + Verify sont délégués à un LLM externe via un script Python appelé par Bash.
-Claude reprend la main pour le widget, Compose et Build.
+Même rigueur de vérification que `scriptorium` (faits confirmés par ≥ 2 sources indépendantes), mais avec
+une économie de tokens radicale : Sweep + Extract + Verify sont délégués à un LLM externe via un script
+Python appelé par Bash. Claude reprend la main pour les widgets et Compose.
+
+L'output est **un document HTML unique** (`output.html`) mêlant sections rédigées et widgets interactifs,
+assemblé par `build.py`. Ce n'est pas le triptyque à 3 éditions de scriptorium : le design a divergé vers
+un doc enrichi de widgets.
 
 ## Architecture cible
 
 ```
 Claude          → brief (slug, cadrage, paramètres)
 Python/LLM ext  → Sweep (duckduckgo + Jina) + Extract + Verify → knowledge.json + sections_draft.json
-Claude          → widget + Compose (manifestes)
-build.py        → 3 HTML déterministes
+Claude          → widgets + Compose (manifest.json)
+build.py        → 1 HTML déterministe (sections + widgets)
 ```
 
 ## Contraintes non négociables
@@ -25,5 +29,5 @@ build.py        → 3 HTML déterministes
 
 ## À ne pas faire
 
-- Ne pas recoder `build.py` — il sera importé ou copié depuis scriptorium.
+- Ne pas recoder `build.py` — il est déjà implémenté ici et doit rester déterministe (aucune logique LLM).
 - Ne pas supposer un modèle spécifique : la cible (Ollama local vs RunPod) est un paramètre de config.

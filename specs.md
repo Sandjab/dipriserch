@@ -21,14 +21,14 @@ en conservant Claude pour les tâches où sa qualité justifie le coût.
 | Verify (vérification adversariale) | LLM externe | appels JSON structurés |
 | Widget (HTML interactif) | Claude | génération créative |
 | Compose (manifestes JSON) | Claude | logique d'édition |
-| Build (assemblage HTML) | `build.py` | déterministe, inchangé |
+| Build (assemblage HTML) | `build.py` | déterministe, implémenté dans ce repo |
 
 ## Dépendances connues
 
 - `duckduckgo-search` — recherche gratuite sans clé API
 - `r.jina.ai/<url>` — lecture de pages web en markdown, gratuit
 - `openai` Python SDK — compatible Ollama (`base_url=http://localhost:11434/v1`) et RunPod
-- `build.py` + charte CSS depuis scriptorium
+- `build.py` + charte CSS (`assets/style.css`) — implémentés dans ce repo (design hérité de scriptorium)
 
 ## Questions ouvertes (à brainstormer)
 
