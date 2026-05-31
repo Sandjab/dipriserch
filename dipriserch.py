@@ -143,7 +143,7 @@ def run_extract(slug: str, run_dir: Path, client: OpenAI, model: str) -> None:
 
     print(f"[extract] Appel LLM ({len(content)} chars)...")
     result = chat_structured(client, model,
-                             EXTRACT_PROMPT.format(slug=slug.replace("-", " "), content=content))
+                             EXTRACT_PROMPT.format(slug=slug.replace("-", " ").replace("_", " "), content=content))
 
     facts = result.get("facts", [])
     for f in facts:
