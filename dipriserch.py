@@ -242,40 +242,12 @@ def run_reduce(slug: str, run_dir: Path, client: OpenAI, model: str,
     (run_dir / "sections_draft.json").write_text(json.dumps(sections, ensure_ascii=False, indent=2))
 
 
-def run_extract(slug: str, run_dir: Path, client: OpenAI, model: str) -> None:
-    if (run_dir / "knowledge.json").exists() and (run_dir / "sections_draft.json").exists():
-        print("[extract] Fichiers déjà présents, skip.")
-        return
-
-    sweep = json.loads((run_dir / "sweep_results.json").read_text())
-    # Budget réparti équitablement sur toutes les pages : expose tous les
-    # domaines d'un coup (indispensable pour corroborer un fait par ≥ 2 sources),
-    # tout en gardant le prompt sous le seuil d'instruction-following du modèle.
-    per_page = EXTRACT_REDUCE_MAX_CHARS // max(len(sweep), 1)
-    content = "\n\n---\n\n".join(
-        f"Source: {r['url']}\n{r['markdown'][:per_page]}" for r in sweep
-    )
-
-    if len(content.strip()) < MIN_CONTENT_CHARS:
-        print(f"[extract] ERREUR : contenu insuffisant ({len(content)} chars < {MIN_CONTENT_CHARS}). "
-              "Sweep probablement vide — pas d'appel LLM sur du vide.", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"[extract] Appel LLM ({len(content)} chars)...")
-    result = chat_structured(client, model,
-                             EXTRACT_PROMPT.format(slug=slug.replace("-", " ").replace("_", " "), content=content))
-
-    facts = result.get("facts", [])
-    for f in facts:
-        f.setdefault("confirmed", False)
-
-    sections = result.get("sections", [])
-    print(f"[extract] {len(facts)} faits, {len(sections)} sections")
-
-    (run_dir / "knowledge.json").write_text(
-        json.dumps(facts, ensure_ascii=False, indent=2))
-    (run_dir / "sections_draft.json").write_text(
-        json.dumps(sections, ensure_ascii=False, indent=2))
+def run_extract(slug: str, run_dir: Path, client: OpenAI, model: str,
+                map_k: int = EXTRACT_MAP_K, map_page_cap: int = EXTRACT_MAP_PAGE_CAP,
+                reduce_max_chars: int = EXTRACT_REDUCE_MAX_CHARS) -> None:
+    """Extract = MAP (verbatim par page) puis REDUCE (agrégation + corroboration)."""
+    run_map(slug, run_dir, client, model, map_k, map_page_cap)
+    run_reduce(slug, run_dir, client, model, reduce_max_chars)
 
 
 # ---------------------------------------------------------------------------
@@ -369,7 +341,8 @@ def main(argv: list[str] | None = None) -> None:
     if start <= PHASES.index("sweep"):
         run_sweep(args.slug, run_dir)
     if start <= PHASES.index("extract"):
-        run_extract(args.slug, run_dir, client, model)
+        run_extract(args.slug, run_dir, client, model,
+                    cfg["map_k"], cfg["map_page_cap"], cfg["reduce_max_chars"])
     if start <= PHASES.index("verify"):
         run_verify(run_dir, client, model)
 
