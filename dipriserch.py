@@ -19,6 +19,18 @@ from openai import OpenAI
 # Config
 # ---------------------------------------------------------------------------
 
+def _env_int(env: dict, name: str, default: int) -> int:
+    """Lit un entier depuis l'env ; retombe sur le défaut si absent/vide/invalide."""
+    raw = env.get(name)
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        print(f"[config] {name}={raw!r} invalide, défaut {default} utilisé.", file=sys.stderr)
+        return default
+
+
 def load_config() -> dict:
     load_dotenv(dotenv_path=Path(".env"), override=True)
     env = {**dotenv_values(Path(".env"))}
@@ -31,6 +43,9 @@ def load_config() -> dict:
         "base_url": env["LLM_BASE_URL"],
         "model":    env["LLM_MODEL"],
         "api_key":  env["LLM_API_KEY"],
+        "map_k":            _env_int(env, "EXTRACT_MAP_K", EXTRACT_MAP_K),
+        "map_page_cap":     _env_int(env, "EXTRACT_MAP_PAGE_CAP", EXTRACT_MAP_PAGE_CAP),
+        "reduce_max_chars": _env_int(env, "EXTRACT_REDUCE_MAX_CHARS", EXTRACT_REDUCE_MAX_CHARS),
     }
 
 
@@ -140,7 +155,9 @@ Règles :
 - level 1 = section principale, level 2 = sous-section.
 """
 
-MAX_CONTENT_CHARS = 28_000
+EXTRACT_MAP_K = 8                  # passages verbatim extraits par page (MAP)
+EXTRACT_MAP_PAGE_CAP = 60_000      # cap chars/page au MAP (edge case page > contexte)
+EXTRACT_REDUCE_MAX_CHARS = 32_000  # budget total de contenu passé au REDUCE
 MIN_CONTENT_CHARS = 200
 
 
@@ -153,7 +170,7 @@ def run_extract(slug: str, run_dir: Path, client: OpenAI, model: str) -> None:
     # Budget réparti équitablement sur toutes les pages : expose tous les
     # domaines d'un coup (indispensable pour corroborer un fait par ≥ 2 sources),
     # tout en gardant le prompt sous le seuil d'instruction-following du modèle.
-    per_page = MAX_CONTENT_CHARS // max(len(sweep), 1)
+    per_page = EXTRACT_REDUCE_MAX_CHARS // max(len(sweep), 1)
     content = "\n\n---\n\n".join(
         f"Source: {r['url']}\n{r['markdown'][:per_page]}" for r in sweep
     )
