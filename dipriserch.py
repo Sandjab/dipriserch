@@ -50,4 +50,4 @@ def chat_structured(client: OpenAI, model: str, prompt: str, max_retries: int = 
             if attempt == max_retries - 1:
                 print(f"[error] Réponse LLM non-JSON après {max_retries} tentatives.", file=sys.stderr)
                 raise
-    return {}
+    raise ValueError("max_retries doit être >= 1")
