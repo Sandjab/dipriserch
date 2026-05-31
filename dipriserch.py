@@ -192,6 +192,11 @@ def run_verify(run_dir: Path, client: OpenAI, model: str) -> None:
 
     confirmed_count = 0
     for fact in facts:
+        # Règle non-négociable : ≥ 2 sources indépendantes requises
+        if len(fact.get("sources", [])) < 2:
+            fact["confirmed"] = False
+            continue
+
         source_content = "\n\n---\n\n".join(
             f"URL: {url}\n{source_index.get(url, '')}"
             for url in fact.get("sources", [])
@@ -207,15 +212,14 @@ def run_verify(run_dir: Path, client: OpenAI, model: str) -> None:
     total = len(facts)
     print(f"[verify] {confirmed_count}/{total} faits confirmés")
     (run_dir / "knowledge.json").write_text(json.dumps(facts, ensure_ascii=False, indent=2))
-    done_flag.write_text("done")
 
-    status = {"status": "ok", "confirmed": confirmed_count, "total": total}
     if total > 0 and confirmed_count / total < 0.5:
-        status["status"] = "partial"
         print(f"[verify] Avertissement : ratio confirmés insuffisant ({confirmed_count}/{total})",
               file=sys.stderr)
-        print(json.dumps(status))
-        sys.exit(2)
+        print(json.dumps({"status": "partial", "confirmed": confirmed_count, "total": total}))
+        sys.exit(2)  # done_flag NON écrit → --from verify peut relancer
+
+    done_flag.write_text("done")
 
 
 # ---------------------------------------------------------------------------
