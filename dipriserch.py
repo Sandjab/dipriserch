@@ -160,6 +160,56 @@ EXTRACT_MAP_PAGE_CAP = 60_000      # cap chars/page au MAP (edge case page > con
 EXTRACT_REDUCE_MAX_CHARS = 32_000  # budget total de contenu passé au REDUCE
 MIN_CONTENT_CHARS = 200
 
+MAP_PROMPT = """\
+Voici le contenu d'une page web sur le sujet « {slug} ».
+
+Extrais les {k} passages les plus IMPORTANTS et FACTUELS, recopiés MOT POUR MOT depuis le
+texte (aucune reformulation). Conserve chiffres, dates, noms propres, définitions exactes.
+Ignore navigation, menus, publicité, pieds de page.
+
+Page :
+{content}
+
+Réponds UNIQUEMENT avec un JSON valide de cette structure exacte :
+{{"passages": ["passage verbatim 1", "passage verbatim 2"]}}
+"""
+
+
+def run_map(slug: str, run_dir: Path, client: OpenAI, model: str,
+            k: int = EXTRACT_MAP_K, page_cap: int = EXTRACT_MAP_PAGE_CAP) -> None:
+    """MAP : extrait K passages verbatim par page → passages.json (cacheable)."""
+    out_path = run_dir / "passages.json"
+    if out_path.exists():
+        print("[map] passages.json déjà présent, skip.")
+        return
+
+    sweep = json.loads((run_dir / "sweep_results.json").read_text())
+    topic = slug.replace("-", " ").replace("_", " ")
+
+    results: list[dict] = []
+    for page in sweep:
+        content = page["markdown"][:page_cap]
+        try:
+            d = chat_structured(client, model,
+                                MAP_PROMPT.format(slug=topic, k=k, content=content))
+            passages = [p for p in d.get("passages", []) if isinstance(p, str) and p.strip()]
+        except Exception as e:
+            print(f"[map] échec {page['url']}: {e}", file=sys.stderr)
+            continue
+        if passages:
+            results.append({"url": page["url"], "passages": passages})
+        print(f"[map] {page['url']} → {len(passages)} passages")
+
+    # Règle ≥ 2 sources : il faut au moins 2 pages distinctes pour corroborer quoi que ce soit.
+    if len(results) < 2:
+        print(f"[map] ERREUR : {len(results)} page(s) avec passages (< 2), corroboration "
+              "impossible, arrêt.", file=sys.stderr)
+        sys.exit(1)
+
+    out_path.write_text(json.dumps(results, ensure_ascii=False, indent=2))
+    total = sum(len(r["passages"]) for r in results)
+    print(f"[map] {len(results)} pages → {total} passages → passages.json")
+
 
 def run_extract(slug: str, run_dir: Path, client: OpenAI, model: str) -> None:
     if (run_dir / "knowledge.json").exists() and (run_dir / "sections_draft.json").exists():
