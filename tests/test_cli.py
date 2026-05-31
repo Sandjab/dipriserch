@@ -1,8 +1,9 @@
+import json
 import sys
 from unittest.mock import patch, MagicMock
 
 
-def test_cli_orchestre_toutes_les_phases(tmp_path, monkeypatch):
+def test_cli_orchestre_toutes_les_phases(tmp_path, monkeypatch, capsys):
     (tmp_path / ".env").write_text(
         "LLM_BASE_URL=http://x\nLLM_MODEL=test\nLLM_API_KEY=x\n"
     )
@@ -21,6 +22,11 @@ def test_cli_orchestre_toutes_les_phases(tmp_path, monkeypatch):
     ms.assert_called_once()
     me.assert_called_once()
     mv.assert_called_once()
+
+    out = capsys.readouterr().out
+    status = json.loads(out.strip().splitlines()[-1])
+    assert status["status"] == "ok"
+    assert "gradient-descent" in status["run_dir"]
 
 
 def test_cli_from_extract_saute_sweep(tmp_path, monkeypatch):
