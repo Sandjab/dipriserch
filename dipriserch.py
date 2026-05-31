@@ -217,3 +217,40 @@ def run_verify(run_dir: Path, client: OpenAI, model: str) -> None:
               file=sys.stderr)
         print(json.dumps(status))
         sys.exit(2)
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+PHASES = ["sweep", "extract", "verify"]
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="dipriserch — pipeline recherche → document")
+    parser.add_argument("slug", help="Identifiant du sujet (ex: gradient-descent)")
+    parser.add_argument("--from", dest="from_phase", choices=PHASES, default="sweep",
+                        help="Reprendre à partir de cette phase")
+    args = parser.parse_args(argv)
+
+    cfg    = load_config()
+    client = make_llm_client(cfg)
+    model  = cfg["model"]
+
+    run_dir = Path("run") / args.slug
+    run_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[dipriserch] slug={args.slug} from={args.from_phase} run_dir={run_dir}")
+
+    start = PHASES.index(args.from_phase)
+    if start <= PHASES.index("sweep"):
+        run_sweep(args.slug, run_dir)
+    if start <= PHASES.index("extract"):
+        run_extract(args.slug, run_dir, client, model)
+    if start <= PHASES.index("verify"):
+        run_verify(run_dir, client, model)
+
+    print(json.dumps({"status": "ok", "run_dir": str(run_dir)}))
+
+
+if __name__ == "__main__":
+    main()
