@@ -20,9 +20,11 @@ python dipriserch.py <slug>
 Lire stdout ligne par ligne. La dernière ligne est un JSON de status :
 - `{"status": "ok", "run_dir": "run/<slug>"}` → continuer
 - `{"status": "partial", "confirmed": N, "total": M}` → demander confirmation avant de continuer
-- Exit code 1 + stderr → diagnostiquer l'erreur (config LLM ? réseau ?)
-
-En cas d'erreur mid-run, reprendre avec `--from sweep|extract|verify` selon la phase échouée.
+- Exit code 1 + stderr → diagnostiquer :
+  - Erreur config LLM (connexion refusée, clé manquante) → demander correction `.env`, relancer sans `--from`
+  - Erreur réseau (Jina/DDG) → relancer avec `--from sweep`
+  - Crash mid-extract → relancer avec `--from extract`
+  - Crash mid-verify → relancer avec `--from verify`
 
 ## 3. Lire le contenu extrait
 
@@ -37,18 +39,19 @@ Pour chaque section ou concept dans `sections_draft.json`, évaluer :
 
 Si oui → inventer le widget le plus pédagogiquement adapté et le coder.
 
-**Critères orientateurs :**
+**Critères orientateurs — ne générer un widget QUE si l'un d'eux s'applique clairement :**
 - Algorithme avec états successifs → simulation pas à pas
 - Formule avec paramètres → sliders interactifs
 - Relation spatiale/graphique → visualisation manipulable
 - Comparaison → vue avant/après
 
+Si aucun critère ne s'applique, laisser la section en texte seul.
+
 **Règles de génération :**
 - Chaque widget est un fichier HTML+CSS+JS autonome, sans dépendance externe CDN
-- Nommer les fichiers `run/<slug>/widgets/widget_1.html`, `widget_2.html`, etc.
+- Nommer les fichiers `widget_1.html`, `widget_2.html`, etc. — l'ID dans manifest (`widget_1`) doit correspondre exactement au nom de fichier sans `.html`
+- Créer `run/<slug>/widgets/` et placer les fichiers dedans
 - Les widgets existants (fichiers déjà présents) ne sont pas regénérés
-- Pas de limite de nombre : générer autant que le contenu le justifie
-- Créer `run/<slug>/widgets/` si le dossier n'existe pas
 
 ## 5. Composer manifest.json
 
@@ -63,7 +66,7 @@ Si oui → inventer le widget le plus pédagogiquement adapté et le coder.
 ]
 ```
 
-Règle de placement : un widget suit immédiatement la section qui introduit le principe qu'il illustre.
+Règle de placement : un widget suit immédiatement la section qui **définit** le concept ou la formule qu'il visualise (pas seulement la mentionne — la section où le concept est expliqué pour la première fois).
 Les IDs de section proviennent de `sections_draft.json` (ne pas inventer de nouveaux IDs).
 Les ancres sont les IDs sans le préfixe `section_`, en kebab-case.
 
