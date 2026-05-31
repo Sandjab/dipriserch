@@ -5,12 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 import requests
 from dotenv import dotenv_values, load_dotenv
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from openai import OpenAI
 
 
@@ -68,6 +69,14 @@ def _build_queries(slug: str) -> list[str]:
     return [topic, f"{topic} tutorial", f"{topic} explained"]
 
 
+def clean_md(md: str) -> str:
+    """Réduit le bruit du markdown Jina : liens → texte seul, images supprimées."""
+    md = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", md)        # images
+    md = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", md)    # liens markdown → texte
+    md = re.sub(r"\n{3,}", "\n\n", md)                  # compacter lignes vides
+    return md.strip()
+
+
 def run_sweep(slug: str, run_dir: Path, queries: list[str] | None = None) -> None:
     out_path = run_dir / "sweep_results.json"
     if out_path.exists():
@@ -90,7 +99,11 @@ def run_sweep(slug: str, run_dir: Path, queries: list[str] | None = None) -> Non
                 except Exception as e:
                     print(f"[sweep] Jina échec {url}: {e}", file=sys.stderr)
                     continue
-                results.append({"query": query, "url": url, "markdown": markdown})
+                results.append({"query": query, "url": url, "markdown": clean_md(markdown)})
+
+    if not results:
+        print("[sweep] ERREUR : 0 page récupérée — recherche web vide, arrêt.", file=sys.stderr)
+        sys.exit(1)
 
     print(f"[sweep] {len(results)} pages récupérées")
     out_path.write_text(json.dumps(results, ensure_ascii=False, indent=2))
@@ -127,7 +140,8 @@ Règles :
 - level 1 = section principale, level 2 = sous-section.
 """
 
-MAX_CONTENT_CHARS = 80_000
+MAX_CONTENT_CHARS = 28_000
+MIN_CONTENT_CHARS = 200
 
 
 def run_extract(slug: str, run_dir: Path, client: OpenAI, model: str) -> None:
@@ -136,9 +150,18 @@ def run_extract(slug: str, run_dir: Path, client: OpenAI, model: str) -> None:
         return
 
     sweep = json.loads((run_dir / "sweep_results.json").read_text())
+    # Budget réparti équitablement sur toutes les pages : expose tous les
+    # domaines d'un coup (indispensable pour corroborer un fait par ≥ 2 sources),
+    # tout en gardant le prompt sous le seuil d'instruction-following du modèle.
+    per_page = MAX_CONTENT_CHARS // max(len(sweep), 1)
     content = "\n\n---\n\n".join(
-        f"Source: {r['url']}\n{r['markdown']}" for r in sweep
-    )[:MAX_CONTENT_CHARS]
+        f"Source: {r['url']}\n{r['markdown'][:per_page]}" for r in sweep
+    )
+
+    if len(content.strip()) < MIN_CONTENT_CHARS:
+        print(f"[extract] ERREUR : contenu insuffisant ({len(content)} chars < {MIN_CONTENT_CHARS}). "
+              "Sweep probablement vide — pas d'appel LLM sur du vide.", file=sys.stderr)
+        sys.exit(1)
 
     print(f"[extract] Appel LLM ({len(content)} chars)...")
     result = chat_structured(client, model,
@@ -198,9 +221,9 @@ def run_verify(run_dir: Path, client: OpenAI, model: str) -> None:
             continue
 
         source_content = "\n\n---\n\n".join(
-            f"URL: {url}\n{source_index.get(url, '')}"
+            f"URL: {url}\n{source_index.get(url, '')[:MAX_SOURCE_CHARS]}"
             for url in fact.get("sources", [])
-        )[:MAX_SOURCE_CHARS]
+        )
 
         result = chat_structured(client, model, VERIFY_PROMPT.format(
             fact_id=fact["id"], fact=fact["fact"], source_content=source_content
