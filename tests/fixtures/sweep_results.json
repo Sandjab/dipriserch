@@ -1,0 +1,12 @@
+[
+  {
+    "query": "gradient descent neural network",
+    "url": "https://example.com/gradient",
+    "markdown": "# Gradient Descent\n\nGradient descent is an optimization algorithm that minimizes a loss function by iteratively adjusting parameters in the direction of the negative gradient."
+  },
+  {
+    "query": "gradient descent neural network",
+    "url": "https://other.org/ml-basics",
+    "markdown": "## Optimization Methods\n\nGradient descent iteratively updates parameters using the gradient of the loss function. The learning rate controls step size."
+  }
+]

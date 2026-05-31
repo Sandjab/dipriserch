@@ -1,0 +1,14 @@
+[
+  {
+    "id": "fact_001",
+    "fact": "Gradient descent minimizes a loss function by iteratively adjusting parameters in the direction of the negative gradient.",
+    "sources": ["https://example.com/gradient", "https://other.org/ml-basics"],
+    "confirmed": true
+  },
+  {
+    "id": "fact_002",
+    "fact": "The learning rate controls the step size in gradient descent.",
+    "sources": ["https://other.org/ml-basics"],
+    "confirmed": false
+  }
+]

@@ -1,0 +1,50 @@
+:root {
+  --font: system-ui, sans-serif;
+  --max-width: 860px;
+  --widget-bg: #f8f9fa;
+  --widget-border: #dee2e6;
+}
+
+body {
+  font-family: var(--font);
+  max-width: var(--max-width);
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3 {
+  margin-top: 2rem;
+}
+
+nav {
+  background: #f0f0f0;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 2rem;
+}
+
+nav ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.widget-container {
+  background: var(--widget-bg);
+  border: 1px solid var(--widget-border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+}
+
+.widget-container h3 {
+  margin-top: 0;
+  font-size: 1rem;
+  color: #555;
+}
+
+.widget-container iframe {
+  width: 100%;
+  border: none;
+  min-height: 400px;
+}

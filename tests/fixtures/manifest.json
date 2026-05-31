@@ -1,0 +1,5 @@
+[
+  {"type": "section", "id": "section_introduction",     "title": "Introduction",           "anchor": "introduction"},
+  {"type": "section", "id": "section_gradient_descent", "title": "Gradient Descent",       "anchor": "gradient-descent"},
+  {"type": "widget",  "id": "widget_1",                 "title": "Descente de gradient interactive", "anchor": "widget-gradient-descent", "after_section": "section_gradient_descent"}
+]

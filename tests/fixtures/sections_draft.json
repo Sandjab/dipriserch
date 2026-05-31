@@ -1,0 +1,14 @@
+[
+  {
+    "id": "section_introduction",
+    "title": "Introduction",
+    "level": 1,
+    "content": "Gradient descent is a fundamental optimization algorithm in machine learning."
+  },
+  {
+    "id": "section_gradient_descent",
+    "title": "Gradient Descent",
+    "level": 2,
+    "content": "Gradient descent minimizes a loss function by iteratively adjusting parameters in the direction of the negative gradient. The learning rate controls the step size."
+  }
+]
