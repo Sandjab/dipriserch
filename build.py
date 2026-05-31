@@ -35,8 +35,6 @@ def _section(entry: dict, sections_index: dict) -> str:
 
 def _widget(entry: dict, widgets_dir: Path) -> str:
     wpath = widgets_dir / f"{entry['id']}.html"
-    if not wpath.exists():
-        raise FileNotFoundError(f"{entry['id']}.html introuvable dans {widgets_dir}")
     raw  = wpath.read_text()
     # Extraire le contenu du body si le widget est un document HTML complet
     m    = re.search(r"<body[^>]*>(.*?)</body>", raw, re.DOTALL | re.IGNORECASE)
@@ -66,7 +64,7 @@ def build(run_dir: Path, css_path: Path | None = None) -> None:
             if not wpath.exists():
                 raise FileNotFoundError(f"{e['id']}.html manquant dans {widgets_dir}")
 
-    css = (css_path or Path("assets/style.css")).read_text()
+    css = (css_path or Path(__file__).parent / "assets" / "style.css").read_text()
 
     parts = [_toc(manifest)]
     for e in manifest:
