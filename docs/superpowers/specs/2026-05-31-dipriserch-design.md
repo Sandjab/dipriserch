@@ -136,9 +136,12 @@ Chaque widget est accompagné d'un bloc metadata dans `manifest.json` :
   "id": "widget_1",
   "title": "Rétropropagation pas à pas",
   "anchor": "backprop",
-  "after_section": "section_3"
+  "after_section": "section_gradient_descent"
 }
 ```
+
+Les sections dans `sections_draft.json` portent des slugs stables générés par le LLM externe
+(`"id": "section_gradient_descent"`). Claude utilise ces mêmes slugs dans `after_section`.
 
 ### Étape 3 — Compose
 
@@ -185,8 +188,9 @@ Claude est le coordinateur : en cas d'échec du script, il lit stderr, évalue l
 **Cache implicite :** les fichiers intermédiaires servent de cache naturel via `--from`. Pas de logique
 de cache explicite.
 
-**Widgets partiels :** si Claude s'interrompt en cours de génération, le prochain run reprend depuis
-`manifest.json` existant. `build.py` valide la présence de tous les widgets avant de démarrer.
+**Widgets partiels :** si Claude s'interrompt en cours de génération, le prochain run liste les fichiers
+`widgets/widget_<n>.html` déjà présents et ne les regénère pas. `build.py` valide la présence de tous
+les widgets référencés dans `manifest.json` avant de démarrer.
 
 ---
 
