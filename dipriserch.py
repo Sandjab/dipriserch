@@ -211,6 +211,37 @@ def run_map(slug: str, run_dir: Path, client: OpenAI, model: str,
     print(f"[map] {len(results)} pages → {total} passages → passages.json")
 
 
+def run_reduce(slug: str, run_dir: Path, client: OpenAI, model: str,
+               max_chars: int = EXTRACT_REDUCE_MAX_CHARS) -> None:
+    """REDUCE : agrège les passages en faits corroborés + sections."""
+    if (run_dir / "knowledge.json").exists() and (run_dir / "sections_draft.json").exists():
+        print("[reduce] Fichiers déjà présents, skip.")
+        return
+
+    passages = json.loads((run_dir / "passages.json").read_text())
+    content = "\n\n---\n\n".join(
+        f"Source: {p['url']}\n" + "\n".join(p["passages"]) for p in passages
+    )[:max_chars]
+
+    if len(content.strip()) < MIN_CONTENT_CHARS:
+        print(f"[reduce] ERREUR : contenu insuffisant ({len(content)} chars < {MIN_CONTENT_CHARS}).",
+              file=sys.stderr)
+        sys.exit(1)
+
+    topic = slug.replace("-", " ").replace("_", " ")
+    print(f"[reduce] Appel LLM ({len(content)} chars)...")
+    result = chat_structured(client, model, EXTRACT_PROMPT.format(slug=topic, content=content))
+
+    facts = result.get("facts", [])
+    for f in facts:
+        f.setdefault("confirmed", False)
+    sections = result.get("sections", [])
+    print(f"[reduce] {len(facts)} faits, {len(sections)} sections")
+
+    (run_dir / "knowledge.json").write_text(json.dumps(facts, ensure_ascii=False, indent=2))
+    (run_dir / "sections_draft.json").write_text(json.dumps(sections, ensure_ascii=False, indent=2))
+
+
 def run_extract(slug: str, run_dir: Path, client: OpenAI, model: str) -> None:
     if (run_dir / "knowledge.json").exists() and (run_dir / "sections_draft.json").exists():
         print("[extract] Fichiers déjà présents, skip.")

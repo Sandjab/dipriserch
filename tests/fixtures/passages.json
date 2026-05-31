@@ -1,0 +1,16 @@
+[
+  {
+    "url": "https://example.com/gradient",
+    "passages": [
+      "Gradient descent minimizes a loss function.",
+      "It updates parameters in the direction of the negative gradient."
+    ]
+  },
+  {
+    "url": "https://other.org/ml-basics",
+    "passages": [
+      "Gradient descent is fundamental to machine learning.",
+      "The learning rate controls the size of each step."
+    ]
+  }
+]
